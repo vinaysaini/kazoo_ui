@@ -1,4 +1,33 @@
 ( function(winkstart, amplify, $) {
+	winkstart.check_routes = function(routes) {
+		var THIS = this;
+
+        if (window.location.hash.length > 1) {
+            var account,
+                handler,
+                matches,
+                path = window.location.hash.substring(1);
+
+            for (var routeIdx = 0; routeIdx < routes.length; routeIdx++) {
+                var route = routes[routeIdx];
+                matches = path.match(route.pattern);
+
+                if (matches && matches[1]) {
+                    account = {'id': matches[1], 'name': 'demo'};
+                    handler = route.handler;
+                    break;
+                }
+            }
+            if (!account) return; // Account not found in path. Do nothing.
+
+            // get the account
+            winkstart.publish('accounts_manager.trigger_masquerade', { account: account }, function() {
+                if (!handler) return; // No handler defined for route, do nothing.
+                handler.apply(THIS, matches.slice(1));
+            });
+        }
+	};
+
     winkstart.is_password_valid = function(password_string, strength) {
         var help = {
                 standard: 'The password must contain at least 6 characters and include a letter and a number.',
@@ -14,6 +43,21 @@
             winkstart.alert('Your password is not valid<br/>' + help[strength] || '');
             return false;
         }
+    };
+
+    winkstart.changeFavIcon = function(src) {
+        var link = document.createElement('link'),
+            oldLink = document.getElementById('dynamicFavicon');
+
+        link.id = 'dynamicFavicon';
+        link.rel = 'shortcut icon';
+        link.href = src;
+
+        if (oldLink) {
+            document.head.removeChild(oldLink);
+        }
+
+        document.head.appendChild(link);
     };
 
     winkstart.get_password_regex = function(strength) {
@@ -90,8 +134,8 @@
         var html,
             popup,
             ok = false,
-            activation_charges = (typeof data.activation_charges) ? null : data.activation_charges,
-            activation_charges_description = (typeof data.activation_charges_description === "undefined") ? null : data.activation_charges_description.replace("_", " "),
+            activation_charges = (typeof data.activation_charges === "undefined") ? undefined : data.activation_charges,
+            activation_charges_description = (typeof data.activation_charges_description === "undefined") ? undefined : data.activation_charges_description.replace("_", " "),
             dataTemplate,
             content,
             options = {
@@ -112,11 +156,10 @@
             },
             formatData = function(data) {
                 var totalAmount = 0,
-                    charges_description = data.activation_charges_description,
                     renderData = [];
 
                 $.each(data, function(categoryName, category) {
-                    if (categoryName != 'activation_charges' && categoryName != 'activation_charges_description') {
+                    if ( categoryName != 'activation_charges' && categoryName != 'activation_charges_description' ) {
                         $.each(category, function(itemName, item) {
                             var discount = item.single_discount_rate + (item.cumulative_discount_rate * item.cumulative_discount),
                                 monthlyCharges = parseFloat(((item.rate * item.quantity) - discount) || 0).toFixed(2);
@@ -143,19 +186,38 @@
                 return renderData;
             };
 
-        dataTemplate = formatData(data)[0];
+        var content,
+            formattedData = formatData(data);
 
-        content = _t('config', 'content_charges');
-
-        if ( activation_charges !== null && activation_charges_description !== null ) {
+       if ( formattedData.length === 0 && ( activation_charges === undefined || activation_charges_description === undefined ) ) {
+            content = _t('config', 'no_charges');
+       } else if ( formattedData.length === 0 && activation_charges !== undefined && activation_charges_description !== undefined ) {
             if ( activation_charges === 0 ) {
-                content = _t('config', 'there_is_no') + activation_charges_description + '. ';
+                content = _t('config', 'there_is_no') + activation_charges_description + '.';
             } else {
-                content = _t('config', 'you_will_pay') + activation_charges + _t('config', 'one_time') + activation_charges_description + '. ';
+                content = _t('config', 'you_will_pay') + activation_charges + ' one-time fee for ' + activation_charges_description + '.';
             }
-        }
+       } else if ( formattedData.length > 0 && activation_charges !== undefined && activation_charges_description !== undefined ) {
+            if ( activation_charges === 0 ) {
+                content = _t('config', 'there_is_no') + activation_charges_description + '.<br />' + _t('config', 'content_charges');
+            } else {
+                content = _t('config', 'you_will_pay') + activation_charges + _t('config', 'one_time') + activation_charges_description + '.<br />' + _t('config', 'content_charges');
+            }
+       }
 
-        html = $('<div class="center"><div class="alert_img confirm_alert"></div><div class="alert_text_wrapper info_alert charges-info">' + content + '</div><div class="alert_text_wrapper info_alert"><table class="charges-summary"><thead><tr><th>' + _t('config', 'service') + '</th><th>' + _t('config', 'rate') + '</th><th></th><th>' + _t('config', 'quantity') + '</th><th>' + _t('config', 'discount') + '</th><th>' + _t('config', 'monthly_charges') + '</th></tr></thead><tbody><tr><td>' + dataTemplate.service + '</td><td>$' + dataTemplate.rate + '</td><td>X</td><td>' + dataTemplate.quantity + '</td><td>' + dataTemplate.discount + '</td><td>$' + dataTemplate.monthlyCharges + '</td></tr></tbody></table></div><div class="alert_text_wrapper info_alert charges-info">' + _t('config', 'press_OK_or_Cancel') + '</div><div class="clear"/><div class="alert_buttons_wrapper"><button id="confirm_button" class="btn success confirm_button">' + _t('config', 'OK') + '</button><button id="cancel_button" class="btn danger confirm_button">' + _t('config', 'CANCEL') + '</button></div></div>');
+        var html = $('<div class="center"><div class="alert_img confirm_alert"></div><div class="alert_text_wrapper info_alert charges-info" id="charges_description">' + content + '</div><div class="alert_text_wrapper info_alert charges-info">' + _t('config', 'press_OK_or_Cancel') + '</div><div class="clear"/><div class="alert_buttons_wrapper"><button id="confirm_button" class="btn success confirm_button">' + _t('config', 'OK') + '</button><button id="cancel_button" class="btn danger confirm_button">' + _t('config', 'CANCEL') + '</button></div></div>');
+
+        if ( formattedData.length > 0 ) {
+            var tableHtml = $('<div class="alert_text_wrapper info_alert" id="charges_table"><table class="charges-summary"><thead><tr><th>' + _t('config', 'service') + '</th><th>' + _t('config', 'rate') + '</th><th></th><th>' + _t('config', 'quantity') + '</th><th>' + _t('config', 'discount') + '</th><th>' + _t('config', 'monthly_charges') + '</th></tr></thead><tbody></tbody></table></div>');
+
+            for ( var service in formattedData ) {
+                var cellHtml = $('<tr><td>' + formattedData[service].service + '</td><td>$' + formattedData[service].rate + '</td><td>X</td><td>' + formattedData[service].quantity + '</td><td>' + formattedData[service].discount + '</td><td>' + formattedData[service].monthlyCharges + '</td></tr>');
+
+               tableHtml.find('tbody').append(cellHtml);
+            }
+
+            tableHtml.insertAfter(html.find('#charges_description'));
+        }
 
         popup = winkstart.dialog(html, options);
 
@@ -576,7 +638,7 @@
 
     winkstart.jsonToString = function(obj) {
         return JSON.stringify(obj);
-    },
+    };
 
     /* If we want to limit the # of simultaneous request, we can use async.parallelLimit(list_functions, LIMIT_# (ex: 3), callback) */
     winkstart.parallel = function(list_functions, callback) {
@@ -587,5 +649,67 @@
             }
         );
     };
+
+	/* Automatically sorts an array of objects. secondArg can either be a custom sort to be applied to the dataset, or a fieldName to sort alphabetically on */
+    winkstart.sort = function(dataSet, secondArg) {
+		var fieldName = 'name',
+    		sortFunction = function(a, b) {
+    			var aString = a[fieldName].toLowerCase(),
+    				bString = b[fieldName].toLowerCase(),
+    				result = (aString > bString) ? 1 : (aString < bString) ? -1 : 0;;
+
+				return result;
+    		};
+
+    	if(typeof secondArg === 'function') {
+			sortFunction = secondArg;
+    	}
+    	else if(typeof secondArg === 'string') {
+			fieldName = secondArg;
+    	}
+
+    	result = dataSet.sort(sortFunction);
+
+		return result;
+    };
+
+    winkstart.autoLogout = function() {
+		var timerAlert,
+			timerLogout,
+		    wait=15,
+		    alertBeforeLogout=2,
+		    alertTriggered = false,
+		    alertDialog;
+
+		var logout = function()	{
+			winkstart.publish('auth.logout');
+		};
+
+		var resetTimer = function() {
+			clearTimeout(timerAlert);
+			clearTimeout(timerLogout);
+
+			if(alertTriggered) {
+				alertTriggered = false;
+
+				alertDialog.dialog('close').remove();
+			}
+
+			timerAlert=setTimeout(function() {
+				alertTriggered = true;
+
+				alertDialog = winkstart.alert(_t('config', 'alert_logout'));
+			}, 60000*(wait-alertBeforeLogout));
+
+			timerLogout=setTimeout(function() {
+				logout();
+			}, 60000*wait);
+		};
+
+		document.onkeypress = resetTimer;
+		document.onmousemove = resetTimer;
+
+		resetTimer();
+	};
 
 })(window.winkstart = window.winkstart || {}, window.amplify = window.amplify || {}, jQuery);

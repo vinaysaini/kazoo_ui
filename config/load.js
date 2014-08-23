@@ -13,7 +13,16 @@ function loadScript(url){
 }
 
 _t = function(module, param){				//Global function translate
-	return window.translate[module][param];
+	if(module && param) {
+		response = window.translate[module][param]
+	}
+	else {
+		console.log('i18n field missing: ' + module + '.' + param);
+
+		response = '';
+	}
+
+	return response;
 };
 
 var langUrls = [
@@ -48,6 +57,7 @@ var langUrls = [
 	'whapps/voip/featurecode',
 	'whapps/voip/groups',
 	'whapps/voip/media',
+	'whapps/voip/prompt',
 	'whapps/voip/menu',
 	'whapps/voip/queue',
 	'whapps/voip/registration',
@@ -55,6 +65,7 @@ var langUrls = [
 	'whapps/voip/timeofday',
 	'whapps/voip/user',
 	'whapps/voip/vmbox',
+	'whapps/voip/faxbox',
 	'whapps/voip/voip'
 ];
 

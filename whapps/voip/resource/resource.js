@@ -104,9 +104,17 @@ winkstart.module('voip', 'resource', {
     },
 
     {
+    	fix_codecs: function(data, formData) {
+			$.each(data.gateways, function(k, gateway) {
+				gateway.codecs = formData.gateways[0].codecs;
+			});
+
+			return data;
+    	},
+
         save_resource: function(form_data, data, success, error) {
             var THIS = this,
-                normalized_data = THIS.normalize_data($.extend(true, {}, data.data, form_data));
+                normalized_data = THIS.fix_codecs(THIS.normalize_data($.extend(true, {}, data.data, form_data)), form_data);
 
             if(typeof data.data == 'object' && data.data.id) {
                  winkstart.request(true, normalized_data.type + '_resource.update', {
@@ -199,19 +207,25 @@ winkstart.module('voip', 'resource', {
                         },
                         gateways: {
                             codecs: {
-                                'G729': 'G729 - 8kbps (Requires License)',
+                                'OPUS': 'OPUS',
+                                'CELT@32000h': 'Siren @ 32Khz',
+                                'G7221@32000h': 'G722.1 @ 32khz',
+                                'G7221@16000h': 'G722.1 @ 16khz',
+                                'G722': 'G722',
+                                'speex@32000h': 'Speex @ 32khz',
+                                'speex@16000h': 'Speex @ 16khz',
                                 'PCMU': 'G711u / PCMU - 64kbps (North America)',
                                 'PCMA': 'G711a / PCMA - 64kbps (Elsewhere)',
-                                'G722_16': 'G722 (HD) @ 16kHz',
-                                'G722_32': 'G722.1 (HD) @ 32kHz',
-                                'CELT_48': 'Siren (HD) @ 48kHz',
-                                'CELT_64': 'Siren (HD) @ 64kHz'
+                                'G729':'G729 - 8kbps (Requires License)',
+                                'GSM':'GSM',
+                                'CELT@48000h': 'Siren (HD) @ 48kHz',
+                                'CELT@64000h': 'Siren (HD) @ 64kHz'
                             }
                         },
                         rules: {
                             '^\\+{0,1}1{0,1}(\\d{10})$': 'US - 10 digits',
                             '^(\\d{7})$': 'US - 7 digits',
-                            '.*': _t('resource', 'no_match'),
+                            '.*': _t('resource', 'match_all'),
                             'custom': _t('resource', 'custom')
                         }
                     },
@@ -231,7 +245,16 @@ winkstart.module('voip', 'resource', {
                         function(_data, status) {
                             _data.data.type = data.type;
 
-                            THIS.render_resource($.extend(true, defaults, _data), target, callbacks);
+							/* We don't want the defaults to override the settings if the array is empty */
+                            if(_data.data.gateways[0].codecs) {
+								defaults.data.gateways[0].codecs = _data.data.gateways[0].codecs;
+                            }
+
+                            var dataTemplate = $.extend(true, defaults, _data);
+
+                            THIS.migrate_data(dataTemplate);
+
+                            THIS.render_resource(dataTemplate, target, callbacks);
 
                             if(typeof callbacks.after_render == 'function') {
                                 callbacks.after_render();
@@ -249,6 +272,29 @@ winkstart.module('voip', 'resource', {
                         callbacks.after_render();
                     }
                 }
+        },
+
+        migrate_data: function(data) {
+            var THIS = this;
+
+            if(data.hasOwnProperty('gateways') && data.gateways[0].hasOwnProperty('codecs')) {
+                var mapMigrateCodec = {
+                        'Speex': 'speex@16000h',
+                        'G722_16': 'G7221@16000h',
+                        'G722_32': 'G7221@32000h',
+                        'CELT_48': 'CELT@48000h',
+                        'CELT_64': 'CELT@64000h'
+                    },
+                    newCodecList = [];
+
+                _.each(data.gateways[0].codecs, function(codec) {
+                    mapMigrateCodec.hasOwnProperty(codec) ? newCodecList.push(mapMigrateCodec[codec]) : newCodecList.push(codec);
+                });
+
+                data.gateways[0].codecs = newCodecList;
+            }
+
+            return data;
         },
 
         delete_resource: function(data, success, error) {

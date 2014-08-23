@@ -480,6 +480,14 @@ winkstart.module('voip', 'timeofday', {
             delete form_data.time;
             delete form_data.weekday;
 
+            if(form_data.enabled === "true") {
+                form_data.enabled = true;
+            } else if(form_data.enabled === "false") {
+                form_data.enabled = false;
+            } else {
+                delete form_data.enabled;
+            }
+
             return form_data;
         },
 
@@ -608,14 +616,24 @@ winkstart.module('voip', 'timeofday', {
                     rules: [
                         {
                             type: 'quantity',
-                            maxSize: '9'
+                            maxSize: '12'
                         }
                     ],
                     isUsable: 'true',
                     key_caption: function(child_node, caption_map) {
                         var key = child_node.key;
 
-                        return (key != '_') ? caption_map[key].name : _t('timeofday', 'all_other_times');
+                        if(key === '_') {
+                            caption = _t('timeofday', 'all_other_times');
+                        }
+                        else if(caption_map.hasOwnProperty(key)) {
+                            caption = caption_map[key].name;
+                        }
+                        else {
+                            caption = ''
+                        }
+
+                        return caption;
                     },
                     key_edit: function(child_node, callback) {
                         var _this = this;
@@ -630,7 +648,7 @@ winkstart.module('voip', 'timeofday', {
                                 data.data.push({ id: '_', name: _t('timeofday', 'all_other_times') });
 
                                 popup_html = THIS.templates.timeofday_key_dialog.tmpl({
-                                    items: data.data,
+                                    items: winkstart.sort(data.data),
                                     selected: child_node.key,
 									_t: function(param){
 										return window.translate['timeofday'][param];

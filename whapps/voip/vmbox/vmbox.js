@@ -19,7 +19,7 @@ winkstart.module('voip', 'vmbox', {
         validation : [
             { name: '#name',    regex: _t('vmbox', 'name_regex') },
             { name: '#mailbox', regex: /^[0-9]+$/ },
-            { name: '#pin',     regex: /^[0-9]{4,}$/ }
+            { name: '#pin',     regex: /^([0-9]{4,})?$/ }
         ],
 
         resources: {
@@ -156,7 +156,7 @@ winkstart.module('voip', 'vmbox', {
                     data: $.extend(true, {
                         require_pin: true,
                         check_if_owner: true,
-                        pin: winkstart.random_string(4, '0123456789'),
+                        pin: '',
                         media: {}
                     }, data_defaults || {}),
 
@@ -420,6 +420,10 @@ winkstart.module('voip', 'vmbox', {
                 delete form_data.media.unavailable;
             }
 
+            if(form_data.pin === '') {
+				delete form_data.pin;
+            }
+
             return form_data;
         },
 
@@ -587,7 +591,7 @@ winkstart.module('voip', 'vmbox', {
                                     _t: function(param){
                                         return window.translate['vmbox'][param];
                                     },
-                                    items: data.data,
+                                    items: winkstart.sort(data.data),
                                     selected: node.getMetadata('id') || ''
                                 });
 

@@ -1,6 +1,3 @@
-if (!window.translate["auth"]) {
-	//$LAB.script('whapps/auth/auth/lang/' + winkstart.config.language + '.js');
-}
 winkstart.module('auth', 'auth',
     {
         css: [
@@ -29,7 +26,8 @@ winkstart.module('auth', 'auth',
             'auth.register' : 'register',
             'auth.save_registration' : 'save_registration',
             'auth.landing': 'landing',
-            'core.loaded': 'core_loaded'
+            'core.loaded': 'core_loaded',
+            'auth.logout': '_logout'
         },
 
         validation: [
@@ -497,7 +495,7 @@ winkstart.module('auth', 'auth',
 
             $('a.recover_password', contentDiv).click(function(e) {
                 e.preventDefault();
-				
+
                 winkstart.publish('auth.recover_password', {data: window.translate});
             });
         },
@@ -626,6 +624,9 @@ winkstart.module('auth', 'auth',
 
             THIS.get_account(
                 function(_data) {
+                    winkstart.apps.auth.superduper_admin = _data.data.superduper_admin || false;
+                    
+                    console.log(winkstart.apps.auth)
                     winkstart.getJSON('auth.get_user', rest_data,
                         function (json, xhr) {
                             json.data.account_name = (_data.data || {}).name || winkstart.config.company_name;
@@ -654,12 +655,13 @@ winkstart.module('auth', 'auth',
                             if(json.data.require_password_update) {
                                 winkstart.publish('auth.new_password', json.data);
                             }
+
+                            winkstart.autoLogout();
                         },
                         function(data, status) {
                             winkstart.alert('error', _t('auth', 'an_error_occurred_while_loading'),
                                 function() {
-                                    $.cookie('c_winkstart_auth', null);
-                                    window.location.reload();
+                                    THIS._logout();
                                 }
                             );
                         }
@@ -668,12 +670,19 @@ winkstart.module('auth', 'auth',
                 function(_data) {
                     winkstart.alert('error', _t('auth', 'an_error_occurred_while_loading'),
                         function() {
-                            $.cookie('c_winkstart_auth', null);
-                            window.location.reload();
+                            THIS._logout();
                         }
                     );
                 }
             );
+        },
+
+        _logout: function() {
+            var THIS = this;
+
+            $.cookie('c_winkstart_auth', null);
+
+            window.location.reload();
         },
 
         shared_auth: function(args) {

@@ -28,6 +28,12 @@ winkstart.module('core', 'layout', {
                 contentType: 'application/json',
                 dataType: 'text',
                 verb: 'GET'
+            },
+            'layout.get_icon': {
+                url: '{api_url}/whitelabel/{domain}/icon',
+                contentType: 'application/json',
+                dataType: 'text',
+                verb: 'GET'
             }
         }
     },
@@ -121,7 +127,9 @@ winkstart.module('core', 'layout', {
             });
 
             winkstart.get_version(function(version) {
-                $('.footer_wrapper .tag_version').html('('+version.replace(/\s/g,'')+')');
+                $('.footer_wrapper .tag_version').html('('+version+')');
+
+                winkstart.config.version = version
             });
 
             $('#ws-topbar .brand.logo', layout_html).click(function() {
@@ -145,6 +153,21 @@ winkstart.module('core', 'layout', {
                     else {
                         $('#ws-topbar .brand.logo', layout_html).css('background-image', 'url(config/images/logo.png)');
                     }
+                }
+            );
+            winkstart.request('layout.get_icon', {
+                    api_url: api_url,
+                    domain: domain
+                },
+                function(_data, status) {
+                    var src = api_url + '/whitelabel/' + domain + '/icon?_='+new Date().getTime();
+
+                    winkstart.changeFavIcon(src);
+                },
+                function(_data, status) {
+                    var src = winkstart.config.favicon || 'img/wsLogo.png';
+                    
+                    winkstart.changeFavIcon(src);
                 }
             );
         },

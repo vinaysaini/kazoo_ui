@@ -197,11 +197,7 @@ winkstart.module('userportal', 'portal_manager', {
                         success(_data);
                     }
                 },
-                function(_data, status) {
-                    if(typeof error === 'function') {
-                        error(_data);
-                    }
-                }
+                winkstart.error_message.process_error()
             );
         },
 
@@ -251,12 +247,6 @@ winkstart.module('userportal', 'portal_manager', {
         },
 
         normalize_data: function(data) {
-            /* Settings Part */
-            if(data.call_forward != undefined) {
-                data.call_forward.keep_caller_id = true;
-                data.call_forward.require_keypress = true;
-            }
-
             if(data.call_forward.number === '') {
                 delete data.call_forward.number;
             }
@@ -466,7 +456,8 @@ winkstart.module('userportal', 'portal_manager', {
                     call_forward: {
                         number: replaced_number,
                         enabled: replaced_number !== '' ? true : false,
-                        substitute: $('#ring-device-checkbox', portal_manager_html).attr('checked') ? false : true
+                        substitute: $('#ring-device-checkbox', portal_manager_html).attr('checked') ? false : true,
+                        keep_caller_id: $('#call_forward_keep_caller_id', portal_manager_html).attr('checked') ? true : false
                         //Substitute equals true to enable real call forwarding, false in order to ring devices as well.
                     }
                 };

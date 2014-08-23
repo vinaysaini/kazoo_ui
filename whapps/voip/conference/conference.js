@@ -106,9 +106,20 @@ winkstart.module('voip', 'conference', {
             return result;
         },
 
+		/* Since the extend function doesn't override arrays, we need to do that */
+        fix_arrays: function(merged_data, form_data) {
+			var THIS = this;
+
+			if('member' in form_data && 'numbers' in form_data.member) {
+				merged_data.member.numbers = form_data.member.numbers;
+			}
+
+			return merged_data;
+        },
+
         save_conference: function(form_data, data, success, error) {
             var THIS = this,
-                normalized_data = THIS.normalize_data($.extend(true, {}, data.data, form_data));
+                normalized_data = THIS.fix_arrays(THIS.normalize_data($.extend(true, {}, data.data, form_data)), form_data);
 
             if(typeof data.data == 'object' && data.data.id) {
                 winkstart.request(true, 'conference.update', {
@@ -175,7 +186,6 @@ winkstart.module('voip', 'conference', {
                 },
                 defaults = {
                     data: $.extend(true, {
-                        play_name_on_join: true,
                         member: {}
                     }, data_defaults || {}),
                     field_data: {
@@ -574,7 +584,7 @@ winkstart.module('voip', 'conference', {
                                     _t: function(param){
                                         return window.translate['conference'][param];
                                     },
-                                    items: data.data,
+                                    items: winkstart.sort(data.data),
                                     selected: node.getMetadata('id') || '!'
                                 });
 

@@ -167,10 +167,15 @@ winkstart.module('voip', 'device', {
     },
 
     {
-        fix_codecs: function(data, data2) {
+        fix_arrays: function(data, data2) {
             if(typeof data.media == 'object' && typeof data2.media == 'object') {
                 (data.media.audio || {}).codecs = (data2.media.audio || {}).codecs;
                 (data.media.video || {}).codecs = (data2.media.video || {}).codecs;
+            }
+
+            if('media' in data2 && 'encryption' in data2.media && 'methods' in data2.media.encryption) {
+            	data.media.encryption = data.media.encryption || {};
+				data.media.encryption.methods = data2.media.encryption.methods;
             }
 
             return data;
@@ -179,7 +184,7 @@ winkstart.module('voip', 'device', {
         save_device: function(form_data, data, success, error) {
             var THIS = this,
                 id = (typeof data.data == 'object' && data.data.id) ? data.data.id : undefined,
-                normalized_data = THIS.fix_codecs(THIS.normalize_data($.extend(true, {}, data.data, form_data)), form_data);
+                normalized_data = THIS.fix_arrays(THIS.normalize_data($.extend(true, {}, data.data, form_data)), form_data);
 
             if(id) {
                 winkstart.request(true, 'device.update', {
@@ -266,6 +271,7 @@ winkstart.module('voip', 'device', {
                         ringtones: {},
                         call_restriction: { closed_groups: 'inherit' },
                         media: {
+                        	secure_rtp: 'none',
                             peer_to_peer: 'auto',
                             audio: {
                                 codecs: ['PCMU', 'PCMA']
@@ -274,9 +280,9 @@ winkstart.module('voip', 'device', {
                                 codecs: []
                             },
                             fax: {
-                                option: 'auto'
+                                option: 'false'
                             },
-                            fax_option: 'auto'
+                            fax_option: false
                         },
                         sip: {
                             method: 'password',
@@ -307,6 +313,14 @@ winkstart.module('voip', 'device', {
                             }
                         },
                         media: {
+                        	secure_rtp: {
+                        		value: 'none',
+								options: {
+                                	'none': _t('device', 'none'),
+                                	'srtp': _t('device', 'srtp'),
+                                	'zrtp': _t('device', 'zrtp')
+								}
+                        	},
                             peer_to_peer_options: {
                                 'auto': _t('device', 'automatic'),
                                 'true': _t('device', 'always'),
@@ -321,20 +335,27 @@ winkstart.module('voip', 'device', {
                             },
                             audio: {
                                 codecs: {
-                                    'G729': 'G729 - 8kbps (Requires License)',
+                                    'OPUS': 'OPUS',
+                                    'CELT@32000h': 'Siren @ 32Khz',
+                                    'G7221@32000h': 'G722.1 @ 32khz',
+                                    'G7221@16000h': 'G722.1 @ 16khz',
+                                    'G722': 'G722',
+                                    'speex@32000h': 'Speex @ 32khz',
+                                    'speex@16000h': 'Speex @ 16khz',
                                     'PCMU': 'G711u / PCMU - 64kbps (North America)',
                                     'PCMA': 'G711a / PCMA - 64kbps (Elsewhere)',
-                                    'G722_16': 'G722 (HD) @ 16kHz',
-                                    'G722_32': 'G722.1 (HD) @ 32kHz',
-                                    'CELT_48': 'Siren (HD) @ 48kHz',
-                                    'CELT_64': 'Siren (HD) @ 64kHz'
+                                    'G729':'G729 - 8kbps (Requires License)',
+                                    'GSM':'GSM',
+                                    'CELT@48000h': 'Siren (HD) @ 48kHz',
+                                    'CELT@64000h': 'Siren (HD) @ 64kHz'
                                 }
                             },
                             video: {
                                 codecs: {
-                                    'H261': 'H261',
+                                    'VP8': 'VP8',
+                                    'H264': 'H264',
                                     'H263': 'H263',
-                                    'H264': 'H264'
+                                    'H261': 'H261'
                                 }
                             }
                         },
@@ -436,6 +457,10 @@ winkstart.module('voip', 'device', {
                             function(_data, status) {
                                 defaults.data.device_type = 'sip_device';
 
+                                if('media' in _data.data && 'encryption' in _data.data.media) {
+									defaults.field_data.media.secure_rtp.value = _data.data.media.encryption.enforce_security ? _data.data.media.encryption.methods[0] : 'none';
+                                }
+
                                 if('sip' in _data.data && 'realm' in _data.data.sip) {
                                     defaults.field_data.sip.realm = _data.data.sip.realm;
                                 }
@@ -461,6 +486,18 @@ winkstart.module('voip', 'device', {
 
                 if(typeof data === 'object' && data.id) {
                     render_data = $.extend(true, defaults, results.get_device);
+                }
+                
+                if(results.get_device.data.media.hasOwnProperty('audio')) {
+                    // If the codecs property is defined, override the defaults with it. Indeed, when an empty array is set as the
+                    // list of codecs, it gets overwritten by the extend function otherwise.
+                    if(results.get_device.data.media.audio.hasOwnProperty('codecs')) {
+                        render_data.data.media.audio.codecs = results.get_device.data.media.audio.codecs;
+                    }
+
+                    if(results.get_device.data.media.video.hasOwnProperty('codecs')) {
+                        render_data.data.media.video.codecs = results.get_device.data.media.video.codecs;
+                    }
                 }
 
                 THIS.render_device(render_data, target, callbacks);
@@ -501,6 +538,10 @@ winkstart.module('voip', 'device', {
             var THIS = this,
                 device_html,
                 render;
+
+            if('media' in data.data && 'fax_option' in data.data.media) {
+                data.data.media.fax_option = (data.data.media.fax_option === 'auto' || data.data.media.fax_option === true);
+            }
 
             if(typeof data.data == 'object' && data.data.device_type) {
                 device_html = THIS.templates[data.data.device_type].tmpl(data);
@@ -728,9 +769,36 @@ winkstart.module('voip', 'device', {
                     };
                 }
             }
+
+            if(data.data.device_type === 'fax') {
+                data.data.media.fax_option = true;
+                data.data.media.fax.option = 'true';
+            }
+            else {
+                data.data.media.fax_option = false;
+                data.data.media.fax.option = 'false';
+            }
         },
 
         migrate_data: function(data) {
+            var THIS = this;
+
+            if(data.data.hasOwnProperty('media') && data.data.media.hasOwnProperty('audio') && data.data.media.audio.hasOwnProperty('codecs')) {
+                var mapMigrateCodec = {
+                        'Speex': 'speex@16000h',
+                        'G722_16': 'G7221@16000h',
+                        'G722_32': 'G7221@32000h',
+                        'CELT_48': 'CELT@48000h',
+                        'CELT_64': 'CELT@64000h'
+                    },
+                    newCodecList = [];
+
+                _.each(data.data.media.audio.codecs, function(codec) {
+                    mapMigrateCodec.hasOwnProperty(codec) ? newCodecList.push(mapMigrateCodec[codec]) : newCodecList.push(codec);
+                });
+
+                data.data.media.audio.codecs = newCodecList;
+            }
 
             if(data.data.device_type == 'cell_phone') {
                 data.data.device_type = 'cellphone';
@@ -745,6 +813,12 @@ winkstart.module('voip', 'device', {
                 delete data.data.status;
             }
 
+            if(data.data.hasOwnProperty('ignore_complete_elsewhere')) {
+				data.data.ignore_completed_elsewhere = data.data.ignore_complete_elsewhere;
+
+				delete data.data.ignore_complete_elsewhere;
+            }
+
             return data;
         },
 
@@ -754,7 +828,11 @@ winkstart.module('voip', 'device', {
             }
 
             if('media' in data && 'fax' in data.media && 'fax_option' in data.media) {
-                data.media.fax.option = data.media.fax_option;
+                data.media.fax.option = data.media.fax_option.toString();
+            }
+
+            if('media' in data && 'secure_rtp' in data.media) {
+            	delete data.media.secure_rtp;
             }
 
             if('media' in data && 'bypass_media' in data.media) {
@@ -805,6 +883,13 @@ winkstart.module('voip', 'device', {
                 });
                 data.outbound_flags = new_flags;
             }
+            if(data.device_type === 'fax') {
+                if(!('outbound_flags' in data)) {
+                    data.outbound_flags = ['fax'];
+                } else if(data.outbound_flags.indexOf('fax') < 0) {
+                    data.outbound_flags.splice(0,0,'fax');
+                }
+            }
 
             if(data.ringtones && 'internal' in data.ringtones && data.ringtones.internal === '') {
                 delete data.ringtones.internal;
@@ -816,6 +901,10 @@ winkstart.module('voip', 'device', {
 
             if($.inArray(data.device_type, ['fax', 'softphone', 'sip_device', 'smartphone']) < 0) {
                 delete data.call_restriction;
+            }
+
+            if(data.hasOwnProperty('presence_id') && data.presence_id === '') {
+                delete data.presence_id;
             }
 
             return data;
@@ -865,6 +954,21 @@ winkstart.module('voip', 'device', {
 
             if('extra' in form_data && 'closed_groups' in form_data.extra) {
                 form_data.call_restriction.closed_groups = { action: form_data.extra.closed_groups ? 'deny' : 'inherit' };
+            }
+
+			if($.inArray(form_data.device_type, ['sip_device', 'mobile', 'softphone']) > -1) {
+            	if('extra' in form_data) {
+					form_data.media.encryption = form_data.media.encryption || {};
+
+					if($.inArray(form_data.extra.encryptionMethod, ['srtp', 'zrtp']) > -1) {
+						form_data.media.encryption.enforce_security = true;
+						form_data.media.encryption.methods = [form_data.extra.encryptionMethod];
+					}
+					else {
+						form_data.media.encryption.methods = [];
+						form_data.media.encryption.enforce_security = false;
+					}
+            	}
             }
 
             delete form_data.extra;
@@ -1064,7 +1168,7 @@ winkstart.module('voip', 'device', {
                                         value: node.getMetadata('timeout') || '20'
                                     },
                                     objects: {
-                                        items: data.data,
+                                        items: winkstart.sort(data.data),
                                         selected: node.getMetadata('id') || ''
                                     }
                                 });

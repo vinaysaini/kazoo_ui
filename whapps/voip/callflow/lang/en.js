@@ -58,6 +58,9 @@ window.translate['callflow'] = {
 	ring_strategy: "Ring Strategy",
 	at_the_same_time: "At the same time",
 	in_order: "In order",
+	ringback: "Ringback",
+	default: "Default",
+	silence: "Silence",
 	users: "Users",
 	devices: "Devices",
 	groups: "Groups",
@@ -86,6 +89,7 @@ window.translate['callflow'] = {
 	edit_user_options: "Edit user options",
 	add_a_user: "Add a user",
 	select_user_title: "Select User",
+	t_38_checkbox: 'Enable T.38?',
 	voice_url: "Voice URL",
 	method: "Method",
 	format: "Format",
@@ -129,5 +133,7 @@ window.translate['callflow'] = {
 	please_enter_a_valide_sip_code: "Please enter a valide SIP code.",
 	resource_name: "Resource",
 	this_callflow_is_outdated: "This callflow is outdated, please resave this callflow before continuing.",
-	hot_desking_name: "Hot Desking"	
+	hot_desking_name: "Hot Desking",
+	language: "Language",
+	language_tip: "This callflow action lets you change the language of the prompts used in this callflow!"
 };

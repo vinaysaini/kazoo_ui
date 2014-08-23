@@ -48,17 +48,42 @@
                     <hr/>
 
                     <h3>${_t('set_up_your_pbx')}<!--<a class="instructions" href="http://www.2600hz.com/instructions" target="_blank">See Instructions</a>--></h3>
+                    
                     <div class="clearfix">
-                        <label for="auth_auth_user">${_t('create_a_username')}</label>
-                        <div class="input">
-                            <input class="span4" placeholder="${_t('username_placeholder')}" type="text" name="auth.auth_user" value="${auth.auth_user}" id="auth_auth_user"/>
+                        <label>${_t('authenticate_by')}</label>
+                        <div class="input auth-type">
+                            {{if auth.auth_method === 'IP'}}
+                                <label><input type="radio" name="auth.auth_method" data-type="username" value="Password" /> ${_t('authenticate_by_username')}</label>
+                                <label><input type="radio" name="auth.auth_method" data-type="ip" value="IP" checked /> ${_t('authenticate_by_ip')}</label>
+                            {{else}}
+                                <label><input type="radio" name="auth.auth_method" data-type="username" value="Password" checked /> ${_t('authenticate_by_username')}</label>
+                                <label><input type="radio" name="auth.auth_method" data-type="ip" value="IP" /> ${_t('authenticate_by_ip')}</label>
+                            {{/if}}
                         </div>
                     </div>
 
-                    <div class="clearfix">
-                        <label for="auth_auth_password">${_t('create_a_password')}</label>
-                        <div class="input">
-                            <input class="span4" type="text" name="auth.auth_password" id="auth_auth_password" value="${auth.auth_password}"/>
+                    <div id="auth_username_inputs" class="auth-inputs clearfix">
+                        <div class="clearfix">
+                            <label for="auth_auth_user">${_t('create_a_username')}</label>
+                            <div class="input">
+                                <input class="span4" placeholder="${_t('username_placeholder')}" type="text" name="auth.auth_user" value="${auth.auth_user}" id="auth_auth_user"/>
+                            </div>
+                        </div>
+
+                        <div class="clearfix">
+                            <label for="auth_auth_password">${_t('create_a_password')}</label>
+                            <div class="input">
+                                <input class="span4" type="text" name="auth.auth_password" id="auth_auth_password" value="${auth.auth_password}"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="auth_ip_inputs" class="auth-inputs clearfix">
+                        <div class="clearfix">
+                            <label for="auth_auth_ip">${_t('ip_address')}</label>
+                            <div class="input">
+                                <input class="span4" placeholder="${_t('ip_placeholder')}" type="text" name="auth.ip" value="${auth.ip}" id="auth_ip"/>
+                            </div>
                         </div>
                     </div>
 
@@ -84,7 +109,37 @@
                         </div>
                     </div>
 
-                    <input type="hidden" name="auth.auth_method" value="Password" />
+                    <div class="clearfix">
+                        <label for="invite_format">Invite format</label>
+                        <div class="input">
+                            <select id="inbound_format" name="options.inbound_format" class="medium">
+                            {{if options.inbound_format === 'e164' || !options.inbound_format}}
+                                <option value="e164" selected="selected">E.164@Realm</option>
+                            {{else}}
+                                <option value="e164">E.164@Realm</option>
+                            {{/if}}
+
+                            {{if options.inbound_format === '1npan'}}
+                                <option value="1npan" selected="selected">1 NPA NXX XXXX@Realm</option>
+                            {{else}}
+                                <option value="1npan">1 NPA NXX XXXX@Realm</option>
+                            {{/if}}
+                            
+                            {{if options.inbound_format === 'npan'}}
+                                <option value="npan" selected="selected">NPA NXX XXXX@Realm</option>
+                            {{else}}
+                                <option value="npan">NPA NXX XXXX@Realm</option>
+                            {{/if}}
+                            
+                            {{if options.inbound_format === 'username'}}
+                                <option value="username" selected="selected">SIP_Username@Realm</option>
+                            {{else}}
+                                <option value="username">SIP_Username@Realm</option>
+                            {{/if}}
+                            </select>
+                        </div>
+                    </div>
+
                     <input type="hidden" name="extra.serverid" value="${extra.id}" />
 
                     <hr/>
